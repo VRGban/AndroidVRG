@@ -13,7 +13,7 @@ import android.view.View;
 public final class VrgGlyph {
     public enum Type {
         PLAY, PAUSE, PREV, NEXT, SHUFFLE, REPEAT, REPEAT_ONE, VOLUME, VOLUME_MUTED,
-        PLUS, CHECK, NOTE, DOWNLOAD, PLAYLIST_ADD, TRASH, HEART, HEART_FILLED, LYRICS, EQ, CHEVRON_DOWN, SEND, RADIO
+        PLUS, CHECK, NOTE, DOWNLOAD, PLAYLIST_ADD, TRASH, HEART, HEART_FILLED, LYRICS, EQ, CHEVRON_DOWN, SEND, RADIO, QUEUE
     }
 
     private VrgGlyph() {
@@ -245,6 +245,22 @@ public final class VrgGlyph {
                 canvas.drawCircle(6f, 9f, 2.2f, fill);
                 canvas.drawCircle(12f, 15f, 2.2f, fill);
                 canvas.drawCircle(18f, 10.5f, 2.2f, fill);
+                break;
+            }
+            case QUEUE: {
+                p.moveTo(5f, 7f);
+                p.lineTo(19f, 7f);
+                p.moveTo(5f, 12f);
+                p.lineTo(14f, 12f);
+                p.moveTo(5f, 17f);
+                p.lineTo(11f, 17f);
+                canvas.drawPath(p, stroke);
+                Path tri = new Path();
+                tri.moveTo(16f, 14f);
+                tri.lineTo(21f, 17f);
+                tri.lineTo(16f, 20f);
+                tri.close();
+                canvas.drawPath(tri, fill);
                 break;
             }
         }

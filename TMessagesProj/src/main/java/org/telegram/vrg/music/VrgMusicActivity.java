@@ -205,6 +205,109 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         listView.setAdapter(adapter);
         mainCol.addView(listView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 0, 1.0f));
 
+        new androidx.recyclerview.widget.ItemTouchHelper(new androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(androidx.recyclerview.widget.ItemTouchHelper.UP | androidx.recyclerview.widget.ItemTouchHelper.DOWN, androidx.recyclerview.widget.ItemTouchHelper.RIGHT) {
+            private String dragMovedId;
+
+            private final android.graphics.Paint bgPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            private final android.graphics.Paint textPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+            @Override
+            public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder from, @NonNull RecyclerView.ViewHolder to) {
+                int a = from.getAdapterPosition();
+                int b = to.getAdapterPosition();
+                if (a < 0 || b < 0 || a >= displayedTracks.size() || b >= displayedTracks.size()) {
+                    return false;
+                }
+                if (dragMovedId == null) {
+                    dragMovedId = displayedTracks.get(a).id;
+                }
+                VrgMusicTypes.TrackInfo moved = displayedTracks.remove(a);
+                displayedTracks.add(b, moved);
+                adapter.notifyItemMoved(a, b);
+                return true;
+            }
+
+            @Override
+            public int getDragDirs(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh) {
+                boolean reorderable = (activeTab == TAB_LIBRARY || openPlaylistId != null)
+                    && searchInput != null && TextUtils.isEmpty(searchInput.getText().toString().trim());
+                int pos = vh.getAdapterPosition();
+                if (!reorderable || pos < 0 || pos >= displayedTracks.size()) {
+                    return 0;
+                }
+                return super.getDragDirs(rv, vh);
+            }
+
+            @Override
+            public void clearView(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh) {
+                super.clearView(rv, vh);
+                if (dragMovedId == null) {
+                    return;
+                }
+                String id = dragMovedId;
+                dragMovedId = null;
+                int idx = -1;
+                for (int i = 0; i < displayedTracks.size(); i++) {
+                    if (TextUtils.equals(displayedTracks.get(i).id, id)) {
+                        idx = i;
+                        break;
+                    }
+                }
+                if (idx > 0) {
+                    player.reorderTrack(openPlaylistId, id, displayedTracks.get(idx - 1).id, true);
+                } else if (idx == 0 && displayedTracks.size() > 1) {
+                    player.reorderTrack(openPlaylistId, id, displayedTracks.get(1).id, false);
+                }
+            }
+
+            @Override
+            public int getSwipeDirs(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh) {
+                if (activeTab == TAB_PLAYLISTS && openPlaylistId == null) {
+                    return 0;
+                }
+                int pos = vh.getAdapterPosition();
+                if (pos < 0 || pos >= displayedTracks.size()) {
+                    return 0;
+                }
+                return super.getSwipeDirs(rv, vh);
+            }
+
+            @Override
+            public float getSwipeThreshold(@NonNull RecyclerView.ViewHolder vh) {
+                return 0.3f;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int direction) {
+                int pos = vh.getAdapterPosition();
+                if (pos >= 0 && pos < displayedTracks.size()) {
+                    player.enqueueNext(displayedTracks.get(pos));
+                    BulletinFactory.of(VrgMusicActivity.this).createSimpleBulletin(R.raw.info, "Добавлено: играть следующим").show();
+                }
+                if (pos >= 0) {
+                    adapter.notifyItemChanged(pos);
+                }
+            }
+
+            @Override
+            public void onChildDraw(@NonNull android.graphics.Canvas c, @NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh, float dX, float dY, int state, boolean active) {
+                View v = vh.itemView;
+                if (dX > 0) {
+                    bgPaint.setColor(0xFF2F6FED);
+                    c.drawRect(v.getLeft(), v.getTop(), v.getLeft() + dX, v.getBottom(), bgPaint);
+                    textPaint.setColor(0xFFFFFFFF);
+                    textPaint.setTextSize(AndroidUtilities.dp(14));
+                    textPaint.setTypeface(AndroidUtilities.bold());
+                    float cy = (v.getTop() + v.getBottom()) / 2f - (textPaint.descent() + textPaint.ascent()) / 2f;
+                    c.save();
+                    c.clipRect(v.getLeft(), v.getTop(), v.getLeft() + dX, v.getBottom());
+                    c.drawText("В очередь", v.getLeft() + AndroidUtilities.dp(16), cy, textPaint);
+                    c.restore();
+                }
+                super.onChildDraw(c, rv, vh, dX, dY, state, active);
+            }
+        }).attachToRecyclerView(listView);
+
         miniBar = createMiniPlayerBar(context);
         mainCol.addView(miniBar, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 62, 12, 4, 12, 12));
 
@@ -756,9 +859,10 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
             VrgMusicTypes.TrackInfo cur = player.getCurrentTrack();
             if (cur != null) pickChatAndSend(cur);
         });
-        TextView[] chips = { npLyricsBtn, npEqBtn, npRelatedBtn, npCacheBtn, npSendBtn };
+        TextView npQueueBtn = makeUtilChip(ctx, "Очередь", VrgGlyph.Type.QUEUE, v -> presentFragment(new VrgQueueActivity()));
+        TextView[] chips = { npLyricsBtn, npEqBtn, npRelatedBtn, npCacheBtn, npSendBtn, npQueueBtn };
         for (int i = 0; i < chips.length; i++) {
-            utilRow.addView(chips[i], LayoutHelper.createLinear(0, 62, 1f, 0, 0, i == chips.length - 1 ? 0 : 8, 0));
+            utilRow.addView(chips[i], LayoutHelper.createLinear(0, 62, 1f, 0, 0, i == chips.length - 1 ? 0 : 4, 0));
         }
         nowPlayingBg.addView(utilRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
@@ -778,12 +882,13 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
     private TextView makeUtilChip(Context ctx, String text, VrgGlyph.Type glyph, View.OnClickListener click) {
         TextView tv = new TextView(ctx);
         tv.setText(text);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 9.5f);
         tv.setTypeface(AndroidUtilities.bold());
         tv.setTextColor(0xFFFFFFFF);
         tv.setGravity(Gravity.CENTER);
         tv.setSingleLine(true);
-        tv.setPadding(AndroidUtilities.dp(2), AndroidUtilities.dp(8), AndroidUtilities.dp(2), AndroidUtilities.dp(8));
+        tv.setIncludeFontPadding(false);
+        tv.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(8));
         setChipIcon(tv, glyph);
         tv.setCompoundDrawablePadding(AndroidUtilities.dp(4));
         GradientDrawable bg = new GradientDrawable();
@@ -1560,6 +1665,18 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         ArrayList<CharSequence> items = new ArrayList<>();
         ArrayList<Runnable> actions = new ArrayList<>();
 
+        items.add("Играть следующим");
+        actions.add(() -> {
+            player.enqueueNext(track);
+            BulletinFactory.of(this).createSimpleBulletin(R.raw.info, "Добавлено: играть следующим").show();
+        });
+        items.add("В конец очереди");
+        actions.add(() -> {
+            player.enqueueLast(track);
+            BulletinFactory.of(this).createSimpleBulletin(R.raw.info, "Добавлено в конец очереди").show();
+        });
+        items.add("Открыть очередь");
+        actions.add(() -> presentFragment(new VrgQueueActivity()));
         items.add(player.isInLibrary(track.id) ? "Убрать из медиатеки" : "Добавить в медиатеку");
         actions.add(() -> {
             player.toggleLibrary(track);
@@ -1567,11 +1684,23 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         });
         items.add("Добавить в плейлист");
         actions.add(() -> showAddToPlaylistDialog(track));
-        items.add(player.isTrackCached(track.id) ? "✓ Уже в оффлайн-кеше" : "Скачать оффлайн");
-        actions.add(() -> {
-            player.cacheTrack(track);
-            BulletinFactory.of(this).createSimpleBulletin(R.raw.info, "Загрузка в оффлайн-кеш…").show();
-        });
+        if (player.isTrackCached(track.id)) {
+            items.add("Удалить из оффлайн-кеша");
+            actions.add(() -> {
+                ArrayList<VrgMusicTypes.TrackInfo> one = new ArrayList<>();
+                one.add(track);
+                player.clearCacheFor(one);
+                if (adapter != null) adapter.notifyDataSetChanged();
+                syncNowPlaying();
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.info, "Трек удалён из оффлайн-кеша").show();
+            });
+        } else {
+            items.add("Скачать оффлайн");
+            actions.add(() -> {
+                player.cacheTrack(track);
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.info, "Загрузка в оффлайн-кеш…").show();
+            });
+        }
         items.add("Отправить в чат…");
         actions.add(() -> pickChatAndSend(track));
         items.add("Похожие треки");

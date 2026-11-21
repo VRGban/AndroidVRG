@@ -32,6 +32,9 @@ public class VrgSettingsActivity extends BaseFragment {
     private static final int ID_CAT_PLAYER = 7;
     private static final int ID_CAT_VOICE = 8;
     private static final int ID_CAT_PLAYER_SET = 9;
+    private static final int ID_CAT_SIDEMENU = 20;
+    private static final int ID_CAT_FAKE = 21;
+    private static final int ID_CAT_AUTOREPLY = 22;
 
     private static final int ID_LINK_CHANNEL = 10;
     private static final int ID_LINK_SITE = 11;
@@ -133,12 +136,15 @@ public class VrgSettingsActivity extends BaseFragment {
 
         items.add(UItem.asHeader("Категории"));
         items.add(UItem.asButton(ID_CAT_PLAYER, R.drawable.msg_filled_data_music, "VRG Music"));
-        items.add(UItem.asButton(ID_CAT_PLAYER_SET, R.drawable.msg_settings, "Плеер и YouTube"));
         items.add(UItem.asButton(ID_CAT_PLUS, R.drawable.menu_premium_main, "VRG+"));
         items.add(UItem.asButton(ID_CAT_GHOST, R.drawable.msg_stealth_locked, "Призрак", getGhostSummary()));
+        items.add(UItem.asButton(ID_CAT_SIDEMENU, R.drawable.msg_settings, "Боковое меню"));
         items.add(UItem.asButton(ID_CAT_DELETED, R.drawable.msg_delete, "Удалённые сообщения"));
         items.add(UItem.asButton(ID_CAT_LOOK, R.drawable.msg_palette, "Оформление"));
+        items.add(UItem.asButton(ID_CAT_PLAYER_SET, R.drawable.msg_settings, "Плеер и YouTube"));
         items.add(UItem.asButton(ID_CAT_VOICE, R.drawable.msg_voicechat, "Изменение голоса", VrgVoiceChanger.isEnabled() ? VrgVoiceChanger.presetTitle(VrgVoiceChanger.getPresetId()) : "выкл"));
+        items.add(UItem.asButton(ID_CAT_FAKE, R.drawable.msg_edit, "Фейк-профиль", VrgFakeProfile.isEnabled() ? "активен" : "выкл"));
+        items.add(UItem.asButton(ID_CAT_AUTOREPLY, R.drawable.msg_message, "Автоответчик", VrgAutoReply.isEnabled() ? "вкл" : "выкл"));
         items.add(UItem.asButton(ID_CAT_MISC, R.drawable.msg_info, "Удобство"));
         items.add(UItem.asButton(ID_CAT_SECURITY, R.drawable.msg_secret, "Защита и пароли"));
         items.add(UItem.asShadow(null));
@@ -187,6 +193,15 @@ public class VrgSettingsActivity extends BaseFragment {
                 break;
             case ID_CAT_VOICE:
                 presentFragment(new VrgSectionActivity(VrgSectionActivity.SECTION_VOICE));
+                break;
+            case ID_CAT_SIDEMENU:
+                presentFragment(new VrgSectionActivity(VrgSectionActivity.SECTION_SIDEMENU));
+                break;
+            case ID_CAT_FAKE:
+                presentFragment(new VrgFakeProfileActivity());
+                break;
+            case ID_CAT_AUTOREPLY:
+                presentFragment(new VrgAutoReplyActivity());
                 break;
             case ID_CAT_SECURITY:
                 presentFragment(new VrgSectionActivity(VrgSectionActivity.SECTION_SECURITY));

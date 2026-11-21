@@ -63,6 +63,7 @@ public final class VrgMusicPlayer {
         default void onEqChanged() {}
         default void onError(String message) {}
         default void onInfo(String message) {}
+        default void onQueueChanged() {}
     }
 
     private static final String CHANNEL_ID = "vrg_music_playback";
@@ -87,6 +88,7 @@ public final class VrgMusicPlayer {
     private final ArrayList<VrgMusicTypes.TrackInfo> queue = new ArrayList<>();
     private final ArrayList<Integer> order = new ArrayList<>();
     private int currentIndex = -1;
+    private int manualAhead = 0;
 
     private final ArrayList<VrgMusicTypes.TrackInfo> library = new ArrayList<>();
     private final ArrayList<VrgMusicTypes.Playlist> playlists = new ArrayList<>();
@@ -366,6 +368,7 @@ public final class VrgMusicPlayer {
         rebuildOrder();
         playCurrent();
         saveStateAsync();
+        notifyQueueChanged();
     }
 
     public void playTrack(VrgMusicTypes.TrackInfo track) {
@@ -377,7 +380,140 @@ public final class VrgMusicPlayer {
         setQueue(single, 0);
     }
 
+    private void notifyQueueChanged() {
+        for (Listener l : listeners) {
+            l.onQueueChanged();
+        }
+    }
+
+    public void enqueueNext(VrgMusicTypes.TrackInfo track) {
+        if (track == null || !track.isValid()) {
+            return;
+        }
+        if (queue.isEmpty() || currentIndex < 0) {
+            playTrack(track);
+            return;
+        }
+        queue.add(track);
+        int index = queue.size() - 1;
+        int pos = Math.max(order.indexOf(currentIndex), 0);
+        int at = Math.min(pos + 1 + manualAhead, order.size());
+        order.add(at, index);
+        manualAhead++;
+        notifyQueueChanged();
+        saveStateAsync();
+    }
+
+    public void enqueueLast(VrgMusicTypes.TrackInfo track) {
+        if (track == null || !track.isValid()) {
+            return;
+        }
+        if (queue.isEmpty() || currentIndex < 0) {
+            playTrack(track);
+            return;
+        }
+        queue.add(track);
+        order.add(queue.size() - 1);
+        notifyQueueChanged();
+        saveStateAsync();
+    }
+
+    public ArrayList<VrgMusicTypes.TrackInfo> getUpcoming() {
+        ArrayList<VrgMusicTypes.TrackInfo> result = new ArrayList<>();
+        if (currentIndex < 0) {
+            return result;
+        }
+        int pos = Math.max(order.indexOf(currentIndex), 0);
+        for (int i = pos + 1; i < order.size(); i++) {
+            int qi = order.get(i);
+            if (qi >= 0 && qi < queue.size()) {
+                result.add(queue.get(qi));
+            }
+        }
+        return result;
+    }
+
+    public int getManualAhead() {
+        return manualAhead;
+    }
+
+    private void removeQueueIndex(int queueIndex) {
+        if (queueIndex < 0 || queueIndex >= queue.size()) {
+            return;
+        }
+        order.remove(Integer.valueOf(queueIndex));
+        for (int i = 0; i < order.size(); i++) {
+            if (order.get(i) > queueIndex) {
+                order.set(i, order.get(i) - 1);
+            }
+        }
+        queue.remove(queueIndex);
+        if (currentIndex > queueIndex) {
+            currentIndex--;
+        }
+    }
+
+    public void removeUpcoming(int index) {
+        int at = Math.max(order.indexOf(currentIndex), 0) + 1 + index;
+        if (index < 0 || at >= order.size()) {
+            return;
+        }
+        if (index < manualAhead) {
+            manualAhead--;
+        }
+        removeQueueIndex(order.get(at));
+        notifyQueueChanged();
+        saveStateAsync();
+    }
+
+    public void moveUpcoming(int from, int to) {
+        int base = Math.max(order.indexOf(currentIndex), 0) + 1;
+        int count = order.size() - base;
+        if (from < 0 || to < 0 || from >= count || to >= count || from == to) {
+            return;
+        }
+        Integer moved = order.remove(base + from);
+        order.add(base + to, moved);
+        manualAhead = Math.min(manualAhead, count);
+        notifyQueueChanged();
+        saveStateAsync();
+    }
+
+    public void clearUpcoming() {
+        if (currentIndex < 0) {
+            return;
+        }
+        int base = Math.max(order.indexOf(currentIndex), 0) + 1;
+        ArrayList<Integer> indices = new ArrayList<>();
+        for (int i = base; i < order.size(); i++) {
+            indices.add(order.get(i));
+        }
+        if (indices.isEmpty()) {
+            return;
+        }
+        Collections.sort(indices, Collections.reverseOrder());
+        for (int qi : indices) {
+            removeQueueIndex(qi);
+        }
+        manualAhead = 0;
+        notifyQueueChanged();
+        saveStateAsync();
+    }
+
+    public void playUpcoming(int index) {
+        int at = Math.max(order.indexOf(currentIndex), 0) + 1 + index;
+        if (index < 0 || at >= order.size()) {
+            return;
+        }
+        manualAhead = index < manualAhead ? manualAhead - index - 1 : 0;
+        currentIndex = order.get(at);
+        playCurrent();
+        notifyQueueChanged();
+        saveStateAsync();
+    }
+
     private void rebuildOrder() {
+        manualAhead = 0;
         order.clear();
         for (int i = 0; i < queue.size(); i++) {
             order.add(i);
@@ -576,10 +712,14 @@ public final class VrgMusicPlayer {
         int nextPos = pos + 1;
         if (nextPos >= order.size()) {
             nextPos = 0;
+            manualAhead = 0;
+        } else if (manualAhead > 0) {
+            manualAhead--;
         }
         currentIndex = order.get(nextPos);
         playCurrent();
         saveStateAsync();
+        notifyQueueChanged();
     }
 
     public void prev() {
@@ -596,9 +736,11 @@ public final class VrgMusicPlayer {
         if (prevPos < 0) {
             prevPos = order.size() - 1;
         }
+        manualAhead = 0;
         currentIndex = order.get(prevPos);
         playCurrent();
         saveStateAsync();
+        notifyQueueChanged();
     }
 
     private void handleEnded() {
@@ -615,8 +757,12 @@ public final class VrgMusicPlayer {
         }
         int pos = order.indexOf(currentIndex);
         if (pos + 1 < order.size()) {
+            if (manualAhead > 0) {
+                manualAhead--;
+            }
             currentIndex = order.get(pos + 1);
             playCurrent();
+            notifyQueueChanged();
         } else if (repeatMode == VrgMusicTypes.RepeatMode.ALL) {
             currentIndex = order.get(0);
             playCurrent();
@@ -659,6 +805,7 @@ public final class VrgMusicPlayer {
                 currentIndex = firstNew;
                 playCurrent();
                 saveStateAsync();
+                notifyQueueChanged();
             } else {
                 setState(VrgMusicTypes.PlaybackState.PAUSED);
             }
@@ -1049,6 +1196,45 @@ public final class VrgMusicPlayer {
         p.tracks.add(target, moved);
         saveLibraryAsync();
         for (Listener l : listeners) l.onPlaylistsChanged();
+    }
+
+    public void reorderTrack(String playlistId, String movedId, String anchorId, boolean after) {
+        if (movedId == null || anchorId == null || movedId.equals(anchorId)) return;
+        ArrayList<VrgMusicTypes.TrackInfo> list = null;
+        boolean isLibrary = playlistId == null || playlistId.isEmpty();
+        if (isLibrary) {
+            list = library;
+        } else {
+            VrgMusicTypes.Playlist p = findPlaylist(playlistId);
+            if (p != null) list = p.tracks;
+        }
+        if (list == null) return;
+        int from = -1;
+        for (int i = 0; i < list.size(); i++) {
+            if (movedId.equals(list.get(i).id)) {
+                from = i;
+                break;
+            }
+        }
+        if (from < 0) return;
+        VrgMusicTypes.TrackInfo moved = list.remove(from);
+        int to = -1;
+        for (int i = 0; i < list.size(); i++) {
+            if (anchorId.equals(list.get(i).id)) {
+                to = i;
+                break;
+            }
+        }
+        if (to < 0) {
+            list.add(from, moved);
+            return;
+        }
+        list.add(to + (after ? 1 : 0), moved);
+        saveLibraryAsync();
+        for (Listener l : listeners) {
+            if (isLibrary) l.onLibraryChanged();
+            else l.onPlaylistsChanged();
+        }
     }
 
     public void removeTrackFromPlaylist(String playlistId, String trackId) {

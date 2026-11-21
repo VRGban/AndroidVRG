@@ -26,8 +26,9 @@ import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.ui.LaunchActivity;
 
 public final class VrgBackgroundSync {
-    private static final String CHANNEL_ID = "vrg_background_sync_v2";
+    private static final String CHANNEL_ID = "vrg_background_sync_v3";
     private static final String OLD_CHANNEL_ID = "vrg_background_sync";
+    private static final String OLD_CHANNEL_ID_V2 = "vrg_background_sync_v2";
     private static final int NOTIFICATION_ID = 77401;
 
     private VrgBackgroundSync() {
@@ -47,11 +48,14 @@ public final class VrgBackgroundSync {
                 if (nm != null && nm.getNotificationChannel(OLD_CHANNEL_ID) != null) {
                     nm.deleteNotificationChannel(OLD_CHANNEL_ID);
                 }
+                if (nm != null && nm.getNotificationChannel(OLD_CHANNEL_ID_V2) != null) {
+                    nm.deleteNotificationChannel(OLD_CHANNEL_ID_V2);
+                }
                 if (nm != null && nm.getNotificationChannel(CHANNEL_ID) == null) {
                     NotificationChannel channel = new NotificationChannel(
                         CHANNEL_ID,
                         "VRG Фоновая защита",
-                        NotificationManager.IMPORTANCE_LOW
+                        NotificationManager.IMPORTANCE_MIN
                     );
                     channel.setShowBadge(false);
                     channel.enableLights(false);
@@ -74,10 +78,10 @@ public final class VrgBackgroundSync {
 
             Notification notification = new NotificationCompat.Builder(service, CHANNEL_ID)
                 .setDeleteIntent(restorePi)
-                .setSmallIcon(R.drawable.notification)
+                .setSmallIcon(R.drawable.vrg_notification_blank)
                 .setContentTitle("VRG")
                 .setContentText("Фоновая защита от удаления активна")
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setSilent(true)
                 .setOngoing(true)
                 .setShowWhen(false)

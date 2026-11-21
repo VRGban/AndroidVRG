@@ -20,7 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class VrgUpdater {
-    public static final String CURRENT_VERSION = "1.0.5";
+    public static final String CURRENT_VERSION = "1.0.6";
     private static final String VERSION_URL = "https://vrgclient.app/version.json";
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static volatile boolean checking = false;

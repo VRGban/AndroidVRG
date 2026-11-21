@@ -28,6 +28,7 @@ public class VrgSectionActivity extends BaseFragment {
     public static final int SECTION_SECURITY = 6;
     public static final int SECTION_VOICE = 7;
     public static final int SECTION_PLAYER = 8;
+    public static final int SECTION_SIDEMENU = 9;
 
     private static final int ID_FULL_GHOST = 100;
     private static final int ID_GHOST_READ = 101;
@@ -205,6 +206,8 @@ public class VrgSectionActivity extends BaseFragment {
                 return "Изменение голоса";
             case SECTION_PLAYER:
                 return "Плеер";
+            case SECTION_SIDEMENU:
+                return "Боковое меню";
             default:
                 return "VRG";
         }
@@ -242,6 +245,9 @@ public class VrgSectionActivity extends BaseFragment {
                 break;
             case SECTION_PLAYER:
                 fillPlayerItems(items);
+                break;
+            case SECTION_SIDEMENU:
+                fillSideMenuItems(items);
                 break;
         }
     }
@@ -652,6 +658,12 @@ public class VrgSectionActivity extends BaseFragment {
         ));
         items.add(UItem.asShadow(null));
 
+
+        items.add(UItem.asHeader("Приветствие"));
+        items.add(UItem.asButton(ID_SHOW_WELCOME, "Экран «Добро пожаловать в VRG»", "показать"));
+    }
+
+    private void fillSideMenuItems(ArrayList<UItem> items) {
         items.add(UItem.asHeader("Главное меню (⋮)"));
         items.add(sw(
             ID_MENU_VRG_PLAYER,
@@ -712,9 +724,6 @@ public class VrgSectionActivity extends BaseFragment {
             ));
         }
         items.add(UItem.asShadow(null));
-
-        items.add(UItem.asHeader("Приветствие"));
-        items.add(UItem.asButton(ID_SHOW_WELCOME, "Экран «Добро пожаловать в VRG»", "показать"));
     }
 
     private void fillPlusItems(ArrayList<UItem> items) {
