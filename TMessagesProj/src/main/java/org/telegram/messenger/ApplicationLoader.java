@@ -300,6 +300,7 @@ public class ApplicationLoader extends Application {
 
         }
 
+        org.telegram.vrg.VrgTime.apply();
         super.onCreate();
 
         // The widget engine's isolated process has no files, network or accounts: none of the client starts there.

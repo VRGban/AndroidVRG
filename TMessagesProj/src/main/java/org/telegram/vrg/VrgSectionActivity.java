@@ -55,6 +55,9 @@ public class VrgSectionActivity extends BaseFragment {
     private static final int ID_APPLY_LIGHT_THEME = 302;
     private static final int ID_OTHER_THEMES = 399;
     private static final int ID_DENSITY = 398;
+    private static final int ID_ROUND_QUALITY = 397;
+    private static final int ID_TIME_SHIFT = 395;
+    private static final int ID_CLEAR_CACHE = 396;
     private static final int ID_HIDE_CONTACTS = 390;
     private static final int ID_TITLE_MODE = 391;
     private static final int ID_TITLE_CUSTOM = 392;
@@ -397,6 +400,9 @@ public class VrgSectionActivity extends BaseFragment {
     }
 
     private void fillDeletedItems(ArrayList<UItem> items) {
+        items.add(UItem.asHeader("Кэш"));
+        items.add(UItem.asButton(ID_CLEAR_CACHE, "Очистить кэш"));
+        items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Режим шпиона"));
         items.add(sw(
             ID_KEEP_DELETED,
@@ -717,6 +723,10 @@ public class VrgSectionActivity extends BaseFragment {
         items.add(UItem.asButton(ID_FAKE_PROFILE, R.drawable.msg_edit, "Фейк-профиль", VrgFakeProfile.isEnabled() ? "активен" : "выкл"));
         items.add(UItem.asShadow(null));
 
+        items.add(UItem.asHeader("Время"));
+        items.add(UItem.asButton(ID_TIME_SHIFT, "Время в клиенте", VrgTime.label(VrgTime.shiftMinutes())));
+        items.add(UItem.asShadow("Сдвигает время на вашем экране: у сообщений, в списке чатов, в датах. Другие люди видят настоящее время."));
+
         items.add(UItem.asHeader("Другое"));
         items.add(sw(
             ID_BYPASS_NOFORWARDS,
@@ -742,6 +752,9 @@ public class VrgSectionActivity extends BaseFragment {
     }
 
     private void fillMiscItems(ArrayList<UItem> items) {
+        items.add(UItem.asHeader("Кружки"));
+        items.add(UItem.asButton(ID_ROUND_QUALITY, "Качество кружков", VrgRound.label(VrgRound.level())));
+        items.add(UItem.asShadow("Чем выше качество, тем чётче видео, но больше файл, нагрев и расход батареи. Действует на новые кружки."));
         items.add(UItem.asHeader("Профиль"));
         items.add(sw(
             ID_SHOW_PEER_ID,
@@ -1012,6 +1025,48 @@ public class VrgSectionActivity extends BaseFragment {
                 VrgChatLock.lockAll();
                 BulletinFactory.of(this).createSimpleBulletin(R.raw.info, "Все запароленные чаты заблокированы").show();
                 return;
+            case ID_TIME_SHIFT: {
+                final int count = 49;
+                final int[] values = new int[count];
+                final CharSequence[] labels = new CharSequence[count];
+                for (int i = 0; i < count; i++) {
+                    values[i] = -720 + i * 30;
+                    labels[i] = VrgTime.label(values[i]);
+                }
+                new org.telegram.ui.ActionBar.AlertDialog.Builder(getParentActivity())
+                    .setTitle("Время в клиенте")
+                    .setItems(labels, (d, which) -> {
+                        VrgTime.setShiftMinutes(values[which]);
+                        org.telegram.messenger.LocaleController.getInstance().recreateFormatters();
+                        BulletinFactory.of(this).createSimpleBulletin(R.raw.info, "Сдвиг: " + VrgTime.label(values[which]) + ". Полностью применится после перезапуска").show();
+                        refresh();
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+                return;
+            }
+            case ID_CLEAR_CACHE: {
+                new org.telegram.ui.ActionBar.AlertDialog.Builder(getParentActivity())
+                    .setTitle("Очистить кэш")
+                    .setMessage("Вы уверены, что хотите очистить кэш?")
+                    .setPositiveButton("Очистить", (d, w) -> VrgCache.clear(freed -> {
+                        BulletinFactory.of(this).createSimpleBulletin(R.raw.info, "Кэш очищен: " + org.telegram.messenger.AndroidUtilities.formatFileSize(freed)).show();
+                    }))
+                    .setNegativeButton("Отмена", null)
+                    .show();
+                return;
+            }
+            case ID_ROUND_QUALITY: {
+                final String[] opts = {"Обычное", "Высокое (480, 2 Мбит/с)", "Максимальное (640, 3,5 Мбит/с)"};
+                showDialog(org.telegram.ui.Components.AlertsCreator.createSingleChoiceDialog(
+                    getParentActivity(), opts, "Качество кружков",
+                    VrgRound.level(),
+                    (d, which) -> {
+                        VrgConfig.prefs().edit().putInt("round_quality", which).apply();
+                        refresh();
+                    }));
+                return;
+            }
             case ID_DENSITY: {
                 final String[] opts = {"Компактно", "Обычно", "Свободно"};
                 showDialog(org.telegram.ui.Components.AlertsCreator.createSingleChoiceDialog(

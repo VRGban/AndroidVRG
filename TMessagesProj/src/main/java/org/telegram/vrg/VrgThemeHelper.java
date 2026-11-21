@@ -36,6 +36,10 @@ public final class VrgThemeHelper {
         if (!isVrgTheme) {
             return;
         }
+        if ("VRG Light".equals(currentName) && VrgConfig.prefs().getInt("vrg_light_rev", 0) < 4) {
+            applyLightTheme();
+            return;
+        }
         String expectedName = "light".equals(desired) ? "VRG Light" : "VRG Black";
         if (expectedName.equals(currentName)) {
             disableAutoNight();
@@ -54,8 +58,8 @@ public final class VrgThemeHelper {
     }
 
     public static boolean applyLightTheme() {
-        VrgConfig.prefs().edit().putString(PREF_ACTIVE_THEME, "light").apply();
-        return applyAssetTheme("vrg_light.attheme", "vrg_light_v3.attheme", "VRG Light");
+        VrgConfig.prefs().edit().putString(PREF_ACTIVE_THEME, "light").putInt("vrg_light_rev", 4).apply();
+        return applyAssetTheme("vrg_light.attheme", "vrg_light_v4.attheme", "VRG Light");
     }
 
     private static void disableAutoNight() {

@@ -37,6 +37,7 @@ public class VrgSettingsActivity extends BaseFragment {
     private static final int ID_LINK_SITE = 11;
     private static final int ID_LINK_SUPPORT = 12;
     private static final int ID_LINK_UPDATE = 13;
+    private static final int ID_LINK_GITHUB = 14;
 
     private UniversalRecyclerView listView;
     private View headerView;
@@ -145,6 +146,7 @@ public class VrgSettingsActivity extends BaseFragment {
         items.add(UItem.asHeader("Ссылки"));
         items.add(UItem.asButton(ID_LINK_CHANNEL, R.drawable.msg_channel, "Канал", "@VRGclient"));
         items.add(UItem.asButton(ID_LINK_SITE, R.drawable.msg_link, "Сайт", "vrgclient.app"));
+        items.add(UItem.asButton(ID_LINK_GITHUB, R.drawable.msg_link, "GitHub", "VRGban"));
         items.add(UItem.asButton(ID_LINK_SUPPORT, R.drawable.msg_saved, "Поддержать проект", "Boosty / Крипта"));
         items.add(UItem.asButton(ID_LINK_UPDATE, R.drawable.msg_info, "Проверить обновления", "v" + VrgUpdater.CURRENT_VERSION));
         items.add(UItem.asShadow("VRG Client · v" + VrgUpdater.CURRENT_VERSION));
@@ -194,6 +196,9 @@ public class VrgSettingsActivity extends BaseFragment {
                 break;
             case ID_LINK_SITE:
                 Browser.openUrl(getContext(), "https://vrgclient.app");
+                break;
+            case ID_LINK_GITHUB:
+                Browser.openUrl(getContext(), "https://github.com/VRGban");
                 break;
             case ID_LINK_SUPPORT:
                 presentFragment(new VrgSupportActivity());
