@@ -71,3 +71,4 @@ public final class VrgPins {
         VrgConfig.prefs().edit().putString(KEY, sb.toString()).apply();
     }
 }
+

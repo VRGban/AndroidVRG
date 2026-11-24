@@ -131,3 +131,4 @@ public class VrgDeletedListActivity extends BaseFragment {
         return String.valueOf(peerId);
     }
 }
+

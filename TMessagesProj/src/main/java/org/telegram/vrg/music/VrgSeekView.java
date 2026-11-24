@@ -99,3 +99,4 @@ public class VrgSeekView extends View {
         return super.onTouchEvent(e);
     }
 }
+

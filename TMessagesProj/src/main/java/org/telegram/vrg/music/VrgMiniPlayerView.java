@@ -116,3 +116,4 @@ public class VrgMiniPlayerView extends LinearLayout implements VrgMusicPlayer.Li
         sync();
     }
 }
+

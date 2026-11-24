@@ -56,7 +56,8 @@ public final class VrgChatMenu {
         items.add("Очистить удалёнки");
         icons.add(R.drawable.msg_delete);
         actions.add(() -> {
-            VrgStore.getInstance().forgetPeer(account, dialogId);
+            VrgStore store = VrgStore.getInstance();
+            org.telegram.messenger.Utilities.globalQueue.postRunnable(() -> VrgCache.wipeMessages(account, dialogId, store.takePeerDeletedSync(account, dialogId)));
             NotificationCenter.getInstance(account).postNotificationName(
                 NotificationCenter.updateInterfaces,
                 MessagesController.UPDATE_MASK_ALL
@@ -240,3 +241,4 @@ public final class VrgChatMenu {
         builder.show();
     }
 }
+

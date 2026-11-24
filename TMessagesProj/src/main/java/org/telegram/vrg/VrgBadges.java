@@ -50,7 +50,7 @@ import java.util.concurrent.Executors;
 public final class VrgBadges {
     private static final String BADGES_API = "https://vrgclient.app/api/badges?ids=";
     private static final String BOT_USERNAME = "VRGagent";
-    private static final long STALE_MS = 300_000L;
+    private static final long STALE_MS = 40_000L;
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
     private static final ConcurrentHashMap<Long, Entry> map = new ConcurrentHashMap<>();
@@ -369,21 +369,23 @@ public final class VrgBadges {
 
     private static View tierRow(Context context, String[] kinds, String title, String subtitle) {
         LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setOrientation(LinearLayout.VERTICAL);
         LinearLayout icons = new LinearLayout(context);
         icons.setOrientation(LinearLayout.HORIZONTAL);
         for (String kind : kinds) {
             BadgeView v = new BadgeView(context, kind, 24, false);
             icons.addView(v, new LinearLayout.LayoutParams(AndroidUtilities.dp(36), AndroidUtilities.dp(36)));
         }
-        row.addView(icons, new LinearLayout.LayoutParams(AndroidUtilities.dp(36 * 4 + 4), ViewGroup.LayoutParams.WRAP_CONTENT));
-        LinearLayout col = new LinearLayout(context);
-        col.setOrientation(LinearLayout.VERTICAL);
-        col.addView(text(context, title, 15, Theme.key_dialogTextBlack, true));
+        row.addView(icons, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView titleView = text(context, title, 15, Theme.key_dialogTextBlack, true);
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tp.topMargin = AndroidUtilities.dp(6);
+        row.addView(titleView, tp);
         TextView sub = text(context, subtitle, 13, Theme.key_dialogTextGray2, false);
-        col.addView(sub);
-        row.addView(col, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        sub.setSingleLine(false);
+        sub.setMaxLines(6);
+        sub.setEllipsize(null);
+        row.addView(sub, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         return row;
     }
 
@@ -477,10 +479,18 @@ public final class VrgBadges {
         builder.show();
     }
 
+    private static Runnable pendingRefresh;
+
     private static void changeIcon(long userId, String icon) {
         setLocalIcon(userId, icon);
         final int account = UserConfig.selectedAccount;
-        final Runnable done = () -> mainHandler.postDelayed(() -> refresh(userId), 4500);
+        final Runnable done = () -> {
+            if (pendingRefresh != null) {
+                mainHandler.removeCallbacks(pendingRefresh);
+            }
+            pendingRefresh = () -> refresh(userId);
+            mainHandler.postDelayed(pendingRefresh, 4500);
+        };
         MessagesController mc = MessagesController.getInstance(account);
         TLObject cached = mc.getUserOrChat(BOT_USERNAME);
         if (cached instanceof TLRPC.User) {
@@ -635,3 +645,4 @@ public final class VrgBadges {
         return sb;
     }
 }
+

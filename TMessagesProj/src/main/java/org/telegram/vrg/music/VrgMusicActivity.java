@@ -23,6 +23,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import org.telegram.vrg.VrgConfig;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -179,7 +180,13 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         tabSearch = makeTabButton(context, "Поиск");
         tabLibrary = makeTabButton(context, "Моя музыка");
         tabPlaylists = makeTabButton(context, "Плейлисты");
-        tabSearch.setOnClickListener(v -> switchTab(TAB_SEARCH));
+        tabSearch.setOnClickListener(v -> {
+            switchTab(TAB_SEARCH);
+            String pending = searchInput != null && searchInput.getText() != null ? searchInput.getText().toString().trim() : "";
+            if (searchResults.isEmpty() && !pending.isEmpty()) {
+                runSearchOrFilter();
+            }
+        });
         tabLibrary.setOnClickListener(v -> switchTab(TAB_LIBRARY));
         tabPlaylists.setOnClickListener(v -> switchTab(TAB_PLAYLISTS));
         tabsRow.addView(tabSearch, LayoutHelper.createLinear(0, 36, 1f, 0, 0, 6, 0));
@@ -205,7 +212,7 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         listView.setAdapter(adapter);
         mainCol.addView(listView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 0, 1.0f));
 
-        new androidx.recyclerview.widget.ItemTouchHelper(new androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(androidx.recyclerview.widget.ItemTouchHelper.UP | androidx.recyclerview.widget.ItemTouchHelper.DOWN, androidx.recyclerview.widget.ItemTouchHelper.RIGHT) {
+        new androidx.recyclerview.widget.ItemTouchHelper(new androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(androidx.recyclerview.widget.ItemTouchHelper.UP | androidx.recyclerview.widget.ItemTouchHelper.DOWN, androidx.recyclerview.widget.ItemTouchHelper.LEFT) {
             private String dragMovedId;
 
             private final android.graphics.Paint bgPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
@@ -292,16 +299,17 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
             @Override
             public void onChildDraw(@NonNull android.graphics.Canvas c, @NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh, float dX, float dY, int state, boolean active) {
                 View v = vh.itemView;
-                if (dX > 0) {
+                if (dX < 0) {
                     bgPaint.setColor(0xFF2F6FED);
-                    c.drawRect(v.getLeft(), v.getTop(), v.getLeft() + dX, v.getBottom(), bgPaint);
+                    c.drawRect(v.getRight() + dX, v.getTop(), v.getRight(), v.getBottom(), bgPaint);
                     textPaint.setColor(0xFFFFFFFF);
                     textPaint.setTextSize(AndroidUtilities.dp(14));
                     textPaint.setTypeface(AndroidUtilities.bold());
+                    textPaint.setTextAlign(android.graphics.Paint.Align.RIGHT);
                     float cy = (v.getTop() + v.getBottom()) / 2f - (textPaint.descent() + textPaint.ascent()) / 2f;
                     c.save();
-                    c.clipRect(v.getLeft(), v.getTop(), v.getLeft() + dX, v.getBottom());
-                    c.drawText("В очередь", v.getLeft() + AndroidUtilities.dp(16), cy, textPaint);
+                    c.clipRect(v.getRight() + dX, v.getTop(), v.getRight(), v.getBottom());
+                    c.drawText("В очередь", v.getRight() - AndroidUtilities.dp(16), cy, textPaint);
                     c.restore();
                 }
                 super.onChildDraw(c, rv, vh, dX, dY, state, active);
@@ -316,7 +324,17 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         root.addView(nowPlayingOverlay, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         player.addListener(this);
-        switchTab(player.getLibrary().isEmpty() ? TAB_SEARCH : TAB_LIBRARY);
+        int startTab = player.getLibrary().isEmpty() ? TAB_SEARCH : TAB_LIBRARY;
+        int savedTab = VrgConfig.prefs().getInt("music_tab", -1);
+        if (savedTab >= TAB_SEARCH && savedTab <= TAB_PLAYLISTS) {
+            startTab = savedTab;
+        }
+        switchTab(startTab);
+        String savedPlaylist = VrgConfig.prefs().getString("music_playlist", "");
+        if (startTab == TAB_PLAYLISTS && savedPlaylist != null && !savedPlaylist.isEmpty() && player.findPlaylist(savedPlaylist) != null) {
+            openPlaylistId = savedPlaylist;
+            refreshList();
+        }
         syncMiniPlayer();
         syncNowPlaying();
 
@@ -375,6 +393,26 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         return tv;
     }
 
+    private static String totalDurationText(java.util.List<VrgMusicTypes.TrackInfo> tracks) {
+        long total = 0;
+        for (VrgMusicTypes.TrackInfo t : tracks) {
+            total += Math.max(t.durationMs, 0);
+        }
+        long minutes = total / 60000;
+        if (minutes <= 0) {
+            return "";
+        }
+        long days = minutes / (60 * 24);
+        long hours = (minutes / 60) % 24;
+        long mins = minutes % 60;
+        if (days > 0) {
+            return "   ·   " + days + " д " + hours + " ч";
+        } else if (hours > 0) {
+            return "   ·   " + hours + " ч " + mins + " мин";
+        }
+        return "   ·   " + mins + " мин";
+    }
+
     private void switchTab(int tab) {
         activeTab = tab;
         openPlaylistId = null;
@@ -382,6 +420,9 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         styleTab(tabLibrary, tab == TAB_LIBRARY);
         styleTab(tabPlaylists, tab == TAB_PLAYLISTS);
         searchInput.setHint(tab == TAB_SEARCH ? "Поиск треков…" : "Фильтр по названию или артисту…");
+        if (tab == TAB_SEARCH && searchResults.isEmpty()) {
+            setStatus(null);
+        }
         refreshList();
     }
 
@@ -456,6 +497,10 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         if (getContext() == null) return;
         updateTabTitles();
         subBar.removeAllViews();
+        try {
+            VrgConfig.prefs().edit().putInt("music_tab", activeTab).putString("music_playlist", openPlaylistId == null ? "" : openPlaylistId).apply();
+        } catch (Throwable ignore) {
+        }
         displayedTracks.clear();
         displayedPlaylists.clear();
         String filter = searchInput != null && searchInput.getText() != null
@@ -471,7 +516,7 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         } else if (activeTab == TAB_LIBRARY) {
             subBar.setVisibility(View.VISIBLE);
             ArrayList<VrgMusicTypes.TrackInfo> lib = player.getLibrary();
-            subBar.addView(makeInfoLine("Треков: " + lib.size() + "   ·   Офлайн: " + offlineCount(lib) + " / " + lib.size()),
+            subBar.addView(makeInfoLine("Треков: " + lib.size() + "   ·   Офлайн: " + offlineCount(lib) + " / " + lib.size() + totalDurationText(lib)),
                 LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
             TextView impBtn = makePillButton(getContext(), "Импорт", false);
@@ -492,7 +537,7 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
                     displayedTracks.add(t);
                 }
             }
-            setStatus(displayedTracks.isEmpty() ? "Медиатека пуста. Нажмите ♡ на треке или импортируйте плейлист." : null);
+            setStatus(displayedTracks.isEmpty() ? (filter.isEmpty() ? "Медиатека пуста. Нажмите ♡ на треке или импортируйте плейлист." : "Ничего не найдено") : null);
         } else if (activeTab == TAB_PLAYLISTS) {
             subBar.setVisibility(View.VISIBLE);
             if (openPlaylistId == null) {
@@ -526,7 +571,7 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
                 title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
                 head.addView(title, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
                 subBar.addView(head, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 6));
-                subBar.addView(makeInfoLine("Треков: " + pl.tracks.size() + "   ·   Офлайн: " + offlineCount(pl.tracks) + " / " + pl.tracks.size()),
+                subBar.addView(makeInfoLine("Треков: " + pl.tracks.size() + "   ·   Офлайн: " + offlineCount(pl.tracks) + " / " + pl.tracks.size() + totalDurationText(pl.tracks)),
                     LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
                 TextView impBtn = makePillButton(getContext(), "Импорт", false);
@@ -1915,7 +1960,7 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
                 art.setImageResource(R.drawable.msg_filled_data_music);
                 title.setText(pl.name);
                 title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-                sub.setText("Треков: " + pl.tracks.size() + "   ·   Офлайн: " + offlineCount(pl.tracks) + " / " + pl.tracks.size());
+                sub.setText("Треков: " + pl.tracks.size() + "   ·   Офлайн: " + offlineCount(pl.tracks) + " / " + pl.tracks.size() + totalDurationText(pl.tracks));
                 like.setVisibility(View.GONE);
                 more.setVisibility(View.VISIBLE);
                 row.setOnClickListener(v -> {
@@ -1975,3 +2020,4 @@ public class VrgMusicActivity extends BaseFragment implements VrgMusicPlayer.Lis
         }
     }
 }
+

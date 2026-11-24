@@ -36,9 +36,37 @@ public final class VrgCache {
                     FileLog.e(e);
                 }
             }
+            try {
+                final int account = UserConfig.selectedAccount;
+                java.util.LinkedHashMap<Long, java.util.ArrayList<Integer>> wiped = VrgStore.getInstance().clearAllDeletedSync(account);
+                for (java.util.Map.Entry<Long, java.util.ArrayList<Integer>> e : wiped.entrySet()) {
+                    final long dialogId = e.getKey();
+                    final java.util.ArrayList<Integer> ids = e.getValue();
+                    org.telegram.messenger.MessagesStorage storage = org.telegram.messenger.MessagesStorage.getInstance(account);
+                    storage.getStorageQueue().postRunnable(() -> {
+                        java.util.ArrayList<Long> dialogIds = storage.markMessagesAsDeleted(dialogId, ids, false, true, 0, 0);
+                        storage.updateDialogsWithDeletedMessages(dialogId, -dialogId, ids, dialogIds);
+                    });
+                    AndroidUtilities.runOnUIThread(() -> org.telegram.messenger.NotificationCenter.getInstance(account).postNotificationName(org.telegram.messenger.NotificationCenter.messagesDeleted, ids, dialogId < 0 ? -dialogId : 0L, false));
+                }
+            } catch (Throwable e) {
+                FileLog.e(e);
+            }
             final long result = freed;
             AndroidUtilities.runOnUIThread(() -> done.run(result));
         });
+    }
+
+    public static void wipeMessages(int account, long dialogId, java.util.ArrayList<Integer> ids) {
+        if (dialogId == 0 || ids == null || ids.isEmpty()) {
+            return;
+        }
+        org.telegram.messenger.MessagesStorage storage = org.telegram.messenger.MessagesStorage.getInstance(account);
+        storage.getStorageQueue().postRunnable(() -> {
+            java.util.ArrayList<Long> dialogIds = storage.markMessagesAsDeleted(dialogId, ids, false, true, 0, 0);
+            storage.updateDialogsWithDeletedMessages(dialogId, -dialogId, ids, dialogIds);
+        });
+        AndroidUtilities.runOnUIThread(() -> org.telegram.messenger.NotificationCenter.getInstance(account).postNotificationName(org.telegram.messenger.NotificationCenter.messagesDeleted, ids, dialogId < 0 ? -dialogId : 0L, false));
     }
 
     private static long deleteContents(File dir) {
@@ -60,3 +88,4 @@ public final class VrgCache {
         return freed;
     }
 }
+

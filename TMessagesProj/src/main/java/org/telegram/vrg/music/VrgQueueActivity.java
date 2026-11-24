@@ -247,3 +247,4 @@ public class VrgQueueActivity extends BaseFragment implements VrgMusicPlayer.Lis
         }
     }
 }
+

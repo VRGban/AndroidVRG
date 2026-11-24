@@ -104,3 +104,4 @@ public class VrgVSlider extends View {
         }
     }
 }
+

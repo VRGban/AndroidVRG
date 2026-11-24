@@ -16367,6 +16367,16 @@ public class MessagesStorage extends BaseController {
         if (mids == null || mids.isEmpty()) {
             return;
         }
+        if (key > 0 && org.telegram.vrg.VrgConfig.isSkipBotDeleted()) {
+            TLRPC.User botUser = getMessagesController().getUser(key);
+            if (botUser != null && botUser.bot) {
+                storageQueue.postRunnable(() -> {
+                    ArrayList<Long> dialogIds = markMessagesAsDeleted(key, mids, false, true, 0, 0);
+                    updateDialogsWithDeletedMessages(key, -key, mids, dialogIds);
+                });
+                return;
+            }
+        }
         storageQueue.postRunnable(() -> {
             org.telegram.vrg.VrgStore store = org.telegram.vrg.VrgStore.getInstance();
             for (int a = 0, size = mids.size(); a < size; a++) {

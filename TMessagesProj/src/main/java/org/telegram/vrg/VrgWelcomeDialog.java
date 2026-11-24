@@ -283,3 +283,4 @@ public final class VrgWelcomeDialog {
         root.requestApplyInsets();
     }
 }
+

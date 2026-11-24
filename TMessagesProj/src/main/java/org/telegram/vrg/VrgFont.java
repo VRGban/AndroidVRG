@@ -83,3 +83,4 @@ public final class VrgFont {
         return medium;
     }
 }
+

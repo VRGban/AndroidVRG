@@ -224,3 +224,4 @@ public class VrgSettingsActivity extends BaseFragment {
         }
     }
 }
+

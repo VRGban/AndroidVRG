@@ -138,3 +138,4 @@ public class VrgFakeProfileActivity extends BaseFragment {
             .show();
     }
 }
+

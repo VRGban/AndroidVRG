@@ -132,3 +132,4 @@ public class VrgInfoSwitchCell extends FrameLayout {
         }
     }
 }
+

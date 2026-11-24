@@ -114,6 +114,18 @@ public final class VrgConfig {
         prefs().edit().putBoolean("keep_deleted", value).apply();
     }
 
+    public static boolean isSkipBotDeleted() {
+        return !prefs().getBoolean("keep_bots", true);
+    }
+
+    public static void setKeepBots(boolean value) {
+        prefs().edit().putBoolean("keep_bots", value).apply();
+    }
+
+    public static boolean isKeepBots() {
+        return prefs().getBoolean("keep_bots", true);
+    }
+
     public static boolean isBackgroundAntiDelete() {
         return prefs().getBoolean("bg_anti_delete", true);
     }
@@ -386,3 +398,4 @@ public final class VrgConfig {
         return prefs().getBoolean("select_unlimited", true) ? 100000 : 100;
     }
 }
+

@@ -147,3 +147,4 @@ public final class VrgBadgeDrawable extends Drawable {
         return PixelFormat.TRANSLUCENT;
     }
 }
+

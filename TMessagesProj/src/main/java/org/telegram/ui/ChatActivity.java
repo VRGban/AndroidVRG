@@ -1252,6 +1252,7 @@ public class ChatActivity extends BaseFragment implements
     public final static int OPTION_VRG_READ_UNTIL = 9003;
     public final static int OPTION_VRG_COPY_EMOJI_ID = 9004;
     public final static int OPTION_VRG_ADD_MUSIC = 9005;
+    public final static int OPTION_VRG_READ_TIME = 9006;
     public final static int OPTION_SAVE_TO_GALLERY = 4;
     public final static int OPTION_APPLY_LOCALIZATION_OR_THEME = 5;
     public final static int OPTION_SHARE = 6;
@@ -8595,7 +8596,9 @@ public class ChatActivity extends BaseFragment implements
                 });
             } else if (chatMode == MODE_PINNED) {
                 if (vrgDeletedChat) {
-                    org.telegram.vrg.VrgStore.getInstance().forgetPeer(currentAccount, dialog_id);
+                    final int vrgAccount = currentAccount;
+                    final long vrgDialog = dialog_id;
+                    org.telegram.messenger.Utilities.globalQueue.postRunnable(() -> org.telegram.vrg.VrgCache.wipeMessages(vrgAccount, vrgDialog, org.telegram.vrg.VrgStore.getInstance().takePeerDeletedSync(vrgAccount, vrgDialog)));
                     getNotificationCenter().postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_ALL);
                     BulletinFactory.of(ChatActivity.this).createSimpleBulletin(R.raw.info, "Удалённые сообщения очищены").show();
                     finishFragment();
@@ -34490,6 +34493,9 @@ public class ChatActivity extends BaseFragment implements
                 org.telegram.vrg.VrgEditHistoryDialog.show(getParentActivity(), currentAccount, selectedObject);
                 break;
             }
+            case OPTION_VRG_READ_TIME: {
+                break;
+            }
             case OPTION_VRG_READ_UNTIL: {
                 if (selectedObject != null && selectedObject.getId() > 0) {
                     getMessagesController().vrgReadDialogUpToMessage(dialog_id, selectedObject.getId());
@@ -46885,6 +46891,16 @@ public class ChatActivity extends BaseFragment implements
                 icons.add(deleteIconRes);
             }
         }
+        if (selectedObject != null && selectedObject.isOutOwner() && selectedObject.getId() > 0
+                && selectedObject.getDialogId() > 0
+                && selectedObject.getId() <= getMessagesController().dialogs_read_outbox_max.getOrDefault(selectedObject.getDialogId(), 0)) {
+            long vrgReadAt = org.telegram.vrg.VrgReadTimes.when(selectedObject.getDialogId(), selectedObject.getId());
+            if (vrgReadAt > 0) {
+                items.add("Прочитано: " + org.telegram.vrg.VrgReadTimes.format(vrgReadAt));
+                options.add(OPTION_VRG_READ_TIME);
+                icons.add(R.drawable.msg_seen);
+            }
+        }
         if (selectedObject != null && selectedObject.messageOwner != null
                 && org.telegram.vrg.VrgStore.getInstance().hasEditHistory(currentAccount, selectedObject.getDialogId(), selectedObject.getId())) {
             items.add("История правок");
@@ -47368,6 +47384,16 @@ public class ChatActivity extends BaseFragment implements
                 items.add(LocaleController.getString(chatMode == MODE_SAVED && threadMessageId != getUserConfig().getClientUserId() ? R.string.Remove : R.string.Delete));
                 options.add(OPTION_DELETE);
                 icons.add(deleteIconRes);
+            }
+        }
+        if (selectedObject != null && selectedObject.isOutOwner() && selectedObject.getId() > 0
+                && selectedObject.getDialogId() > 0
+                && selectedObject.getId() <= getMessagesController().dialogs_read_outbox_max.getOrDefault(selectedObject.getDialogId(), 0)) {
+            long vrgReadAt = org.telegram.vrg.VrgReadTimes.when(selectedObject.getDialogId(), selectedObject.getId());
+            if (vrgReadAt > 0) {
+                items.add("Прочитано: " + org.telegram.vrg.VrgReadTimes.format(vrgReadAt));
+                options.add(OPTION_VRG_READ_TIME);
+                icons.add(R.drawable.msg_seen);
             }
         }
         if (selectedObject != null && selectedObject.messageOwner != null

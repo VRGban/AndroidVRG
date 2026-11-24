@@ -18976,6 +18976,9 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (value == null) {
                     value = getMessagesStorage().getDialogReadMax(true, dialogId);
                 }
+                if (dialogId > 0 && update.max_id > value) {
+                    org.telegram.vrg.VrgReadTimes.record(dialogId, update.max_id);
+                }
                 dialogs_read_outbox_max.put(dialogId, Math.max(value, update.max_id));
             } else if (baseUpdate instanceof TL_update.TL_updateDeleteMessages) {
                 TL_update.TL_updateDeleteMessages update = (TL_update.TL_updateDeleteMessages) baseUpdate;

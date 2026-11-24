@@ -279,3 +279,4 @@ public final class VrgMp4Index {
         return new long[]{total, trackId};
     }
 }
+

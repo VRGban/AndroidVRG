@@ -178,3 +178,4 @@ public class VrgAutoReplyActivity extends BaseFragment {
         return clean.length() > 22 ? clean.substring(0, 22) + "…" : clean;
     }
 }
+

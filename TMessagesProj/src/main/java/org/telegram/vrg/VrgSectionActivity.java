@@ -43,6 +43,7 @@ public class VrgSectionActivity extends BaseFragment {
 
     private static final int ID_KEEP_DELETED = 201;
     private static final int ID_KEEP_TTL = 202;
+    private static final int ID_KEEP_BOTS = 2021;
     private static final int ID_KEEP_EDITED = 203;
     private static final int ID_BG_ANTI_DELETE = 204;
     private static final int ID_BATTERY_OPT = 205;
@@ -418,6 +419,13 @@ public class VrgSectionActivity extends BaseFragment {
             () -> VrgConfig.setKeepDeleted(!VrgConfig.isKeepDeleted())
         ));
         items.add(sw(
+            ID_KEEP_BOTS,
+            "Сохранять удалённые у ботов",
+            "Если выключить, сообщения из чатов с ботами удаляются сразу и не остаются с пометкой «удалено».",
+            VrgConfig.isKeepBots(),
+            () -> VrgConfig.setKeepBots(!VrgConfig.isKeepBots())
+        ));
+        items.add(sw(
             ID_KEEP_TTL,
             "Сохранять одноразовые медиа",
             "Одноразовые фото, видео, кружочки и голосовые сообщения не сгорают после просмотра и остаются в чате.",
@@ -657,7 +665,6 @@ public class VrgSectionActivity extends BaseFragment {
             () -> VrgConfig.setHideComposeBot(!VrgConfig.isHideComposeBot())
         ));
         items.add(UItem.asShadow(null));
-
 
         items.add(UItem.asHeader("Приветствие"));
         items.add(UItem.asButton(ID_SHOW_WELCOME, "Экран «Добро пожаловать в VRG»", "показать"));
@@ -1257,3 +1264,4 @@ public class VrgSectionActivity extends BaseFragment {
         return "выкл";
     }
 }
+

@@ -48,3 +48,4 @@ public final class VrgGhost {
         return VrgConfig.isGhostRead();
     }
 }
+

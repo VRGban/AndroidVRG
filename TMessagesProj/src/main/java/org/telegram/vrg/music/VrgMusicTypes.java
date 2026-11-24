@@ -188,3 +188,4 @@ public final class VrgMusicTypes {
         return String.format(Locale.US, "%d:%02d", min, sec);
     }
 }
+

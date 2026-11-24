@@ -32,3 +32,4 @@ public final class VrgRound {
         return level == 2 ? Math.max(server, 128) : (level == 1 ? Math.max(server, 96) : server);
     }
 }
+

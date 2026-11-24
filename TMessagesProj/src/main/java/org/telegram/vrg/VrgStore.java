@@ -199,6 +199,12 @@ public final class VrgStore extends SQLiteOpenHelper {
         });
     }
 
+    public ArrayList<Integer> takePeerDeletedSync(int account, long dialogId) {
+        ArrayList<Integer> ids = getDeletedIdsForPeerSync(account, dialogId);
+        forgetPeer(account, dialogId);
+        return ids;
+    }
+
     public void forgetPeer(int account, long dialogId) {
         String prefix = account + ":" + dialogId + ":";
         synchronized (deletedCache) {
@@ -304,6 +310,42 @@ public final class VrgStore extends SQLiteOpenHelper {
         return out;
     }
 
+    public java.util.LinkedHashMap<Long, ArrayList<Integer>> clearAllDeletedSync(int account) {
+        ensureLoadedSync();
+        java.util.LinkedHashMap<Long, ArrayList<Integer>> out = new java.util.LinkedHashMap<>();
+        try {
+            SQLiteDatabase db = getWritableDatabase();
+            try (Cursor c = db.rawQuery("SELECT dialog_id, msg_id FROM deleted_messages WHERE account = ?", new String[] { String.valueOf(account) })) {
+                while (c.moveToNext()) {
+                    long dialogId = c.getLong(0);
+                    if (dialogId == 0) {
+                        continue;
+                    }
+                    ArrayList<Integer> list = out.get(dialogId);
+                    if (list == null) {
+                        list = new ArrayList<>();
+                        out.put(dialogId, list);
+                    }
+                    list.add(c.getInt(1));
+                }
+            }
+            db.delete("deleted_messages", "account = ?", new String[] { String.valueOf(account) });
+            db.delete("deleted_log", "account = ?", new String[] { String.valueOf(account) });
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+        String prefix = account + ":";
+        synchronized (deletedCache) {
+            java.util.Iterator<String> it = deletedCache.iterator();
+            while (it.hasNext()) {
+                if (it.next().startsWith(prefix)) {
+                    it.remove();
+                }
+            }
+        }
+        return out;
+    }
+
     public void clearDeletedLog(int account, long dialogId) {
         dbExecutor.execute(() -> {
             try {
@@ -383,3 +425,4 @@ public final class VrgStore extends SQLiteOpenHelper {
         }
     }
 }
+

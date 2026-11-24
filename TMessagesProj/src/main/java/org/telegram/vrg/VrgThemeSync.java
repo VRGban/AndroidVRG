@@ -68,3 +68,4 @@ public final class VrgThemeSync implements NotificationCenter.NotificationCenter
         }
     }
 }
+

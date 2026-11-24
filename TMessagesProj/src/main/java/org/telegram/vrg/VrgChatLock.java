@@ -182,3 +182,4 @@ public final class VrgChatLock {
         dialog.show();
     }
 }
+

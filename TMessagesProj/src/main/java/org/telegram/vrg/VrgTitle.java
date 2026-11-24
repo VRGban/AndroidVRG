@@ -135,3 +135,4 @@ public final class VrgTitle {
         bar.post(update);
     }
 }
+
